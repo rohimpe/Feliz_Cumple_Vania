@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Un mensaje para ti 🎂</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- PANTALLA 1: cuenta regresiva -->
+  <section id="pantalla-cuenta" class="pantalla">
+    <h1>Falta poco para algo especial ✨</h1>
+    <p class="sub">Se abre el 20 de septiembre a las 12:00 AM (hora de Ithaca)</p>
+    <div class="reloj">
+      <div class="caja"><span id="r-dias">--</span><small>días</small></div>
+      <div class="caja"><span id="r-horas">--</span><small>horas</small></div>
+      <div class="caja"><span id="r-min">--</span><small>min</small></div>
+      <div class="caja"><span id="r-seg">--</span><small>seg</small></div>
+    </div>
+    <p id="contador-mensajes" class="sub"></p>
+  </section>
+
+  <!-- PANTALLA 2: el foro -->
+  <section id="pantalla-foro" class="pantalla oculto">
+    <header>
+      <h1>Feliz cumpleaños, Vania 🎂</h1>
+      <p class="sub">Un mensaje de cada persona que te quiere</p>
+      <button id="btn-uno-a-uno">▶ Verlos uno por uno</button>
+    </header>
+
+    <div id="banner-amigos" class="banner oculto"></div>
+
+    <form id="form-mensaje" class="composer oculto">
+      <h2 id="titulo-form">Escribe tu mensaje</h2>
+      <input id="campo-autor" type="text" placeholder="Tu nombre" maxlength="60" required>
+      <textarea id="campo-texto" placeholder="Tu mensaje para Vania…" maxlength="2000" rows="4" required></textarea>
+      <label class="archivo">📷 Agregar foto (opcional)
+        <input id="campo-foto" type="file" accept="image/*" hidden>
+      </label>
+      <img id="vista-previa" class="vista-previa oculto" alt="Vista previa">
+      <label id="fila-quitar" class="quitar oculto">
+        <input id="chk-quitar" type="checkbox"> Quitar la foto actual
+      </label>
+      <div class="fila-botones">
+        <button id="btn-publicar" type="submit">Publicar</button>
+        <button id="btn-cancelar" type="button" class="secundario oculto">Cancelar edición</button>
+      </div>
+      <p id="estado-form" class="estado"></p>
+    </form>
+
+    <main id="muro" class="muro"></main>
+    <p id="vacio" class="sub oculto">Aún no hay mensajes.</p>
+  </section>
+
+  <footer class="pie">
+    <button id="btn-amigo" class="link">Soy amigo/a</button>
+    <button id="btn-salir" class="link oculto">Salir del modo amigos</button>
+  </footer>
+
+  <!-- Ventana para escribir el código -->
+  <dialog id="dlg-codigo">
+    <form id="form-codigo">
+      <h3>Código de amigos</h3>
+      <input id="input-codigo" type="password" placeholder="Escribe el código" autocomplete="off" required>
+      <p id="error-codigo" class="error"></p>
+      <div class="fila-botones">
+        <button type="submit">Entrar</button>
+        <button type="button" id="btn-cerrar-codigo" class="secundario">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Ventana para ver una foto en grande -->
+  <dialog id="dlg-foto"><img id="foto-grande" alt="Foto ampliada"></dialog>
+
+  <!-- Música de fondo -->
+  <audio id="musica" src="musica.mp3" loop preload="none"></audio>
+  <button id="btn-musica" class="flotante oculto" title="Música">🔇</button>
+
+  <!-- Bienvenida (aparece cuando el foro se abre al público) -->
+  <div id="bienvenida" class="oculto">
+    <div class="bienvenida-caja">
+      <div class="regalo">🎁</div>
+      <h1>Feliz cumpleaños, Vania</h1>
+      <p class="sub">Alguien preparó algo para ti…</p>
+      <button id="btn-abrir-regalo">Abrir mi regalo</button>
+    </div>
+  </div>
+
+  <!-- Modo uno por uno -->
+  <div id="visor" class="oculto">
+    <button id="visor-cerrar" class="visor-x" aria-label="Cerrar">✕</button>
+    <div id="visor-contenido" class="visor-contenido"></div>
+    <div class="visor-nav">
+      <button id="visor-ant">← Anterior</button>
+      <span id="visor-pos"></span>
+      <button id="visor-sig">Siguiente →</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
