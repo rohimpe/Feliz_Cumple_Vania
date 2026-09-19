@@ -8,9 +8,11 @@ const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, '0');
 
 let codigo = sessionStorage.getItem('codigo_foro'); // se borra al cerrar la pestaña
-let apertura = 0;        // momento de apertura (ms)
-let offset = 0;          // diferencia entre el reloj del servidor y el de este dispositivo
+let apertura = 0;             // momento de apertura (ms)
+let offset = 0;               // diferencia entre el reloj del servidor y el de este dispositivo
 let foroAbierto = false;
+let vistaVania = false;       // true = el amigo está previsualizando lo que verá Vania
+let bienvenidaVista = false;
 let mensajes = [];
 let firmaAnterior = '';
 let editandoId = null;
@@ -18,17 +20,17 @@ let fotoActual = null;
 
 const ahoraServidor = () => Date.now() + offset;
 const verForo = () => foroAbierto || Boolean(codigo);
+const esAmigo = () => Boolean(codigo) && !vistaVania;
 
 // ============ ARRANQUE ============
 async function iniciar() {
   const info = await cargarInfo();
   if (!info) {
-    $('contador-mensajes').textContent = 'No se pudo conectar. Recarga la página.';
+    $('estado-conexion').textContent = 'No se pudo conectar. Recarga la página.';
     return;
   }
   offset = new Date(info.ahora).getTime() - Date.now();
   apertura = new Date(info.apertura).getTime();
-  mostrarTotal(info.total);
 
   if (codigo && !(await verificar(codigo))) salirModoAmigos();
 
@@ -36,19 +38,13 @@ async function iniciar() {
   actualizarPantallas();
   tick();
   setInterval(tick, 1000);       // el contador
-  setInterval(refrescar, 20000); // mensajes nuevos / total
+  setInterval(refrescar, 20000); // mensajes nuevos
 }
 
 async function cargarInfo() {
   const { data, error } = await db.rpc('info_foro');
   if (error || !data || !data.length) return null;
   return data[0];
-}
-
-function mostrarTotal(n) {
-  $('contador-mensajes').textContent = n > 0
-    ? `💌 ${n} ${n === 1 ? 'mensaje te está esperando' : 'mensajes te están esperando'}`
-    : '';
 }
 
 // ============ CONTADOR ============
@@ -65,7 +61,7 @@ function tick() {
   $('r-min').textContent = pad(Math.floor((s % 3600) / 60));
   $('r-seg').textContent = pad(s % 60);
 
-  if (codigo && !foroAbierto) {
+  if (esAmigo() && !foroAbierto) {
     $('banner-amigos').textContent =
       `🔒 Modo amigos: Vania aún no puede ver esto. Se abre al público en ` +
       `${Math.floor(s / 3600)}h ${pad(Math.floor((s % 3600) / 60))}m ${pad(s % 60)}s`;
@@ -75,13 +71,18 @@ function tick() {
 // ============ PANTALLAS ============
 function actualizarPantallas() {
   const ver = verForo();
+  const amigo = esAmigo();
+  document.body.classList.toggle('con-pestanas', Boolean(codigo));
   $('pantalla-cuenta').classList.toggle('oculto', ver);
   $('pantalla-foro').classList.toggle('oculto', !ver);
-  $('form-mensaje').classList.toggle('oculto', !codigo);
-  $('banner-amigos').classList.toggle('oculto', !codigo || foroAbierto);
+  $('form-mensaje').classList.toggle('oculto', !amigo);
+  $('banner-amigos').classList.toggle('oculto', !amigo || foroAbierto);
   $('btn-amigo').classList.toggle('oculto', Boolean(codigo));
   $('btn-salir').classList.toggle('oculto', !codigo);
-  $('bienvenida').classList.toggle('oculto', !(foroAbierto && !codigo && !bienvenidaVista));
+  $('pestanas').classList.toggle('oculto', !codigo);
+  $('tab-amigos').classList.toggle('activa', !vistaVania);
+  $('tab-vania').classList.toggle('activa', vistaVania);
+  $('bienvenida').classList.toggle('oculto', !((foroAbierto || vistaVania) && !amigo && !bienvenidaVista));
   $('btn-musica').classList.toggle('oculto', !ver);
   if (!ver) cerrarVisor();
   if (ver) {
@@ -91,12 +92,7 @@ function actualizarPantallas() {
 }
 
 async function refrescar() {
-  if (verForo()) {
-    await cargar();
-  } else {
-    const info = await cargarInfo();
-    if (info) mostrarTotal(info.total);
-  }
+  if (verForo()) await cargar();
 }
 
 // ============ MENSAJES ============
@@ -104,7 +100,7 @@ async function cargar() {
   const { data, error } = await db.rpc('leer_mensajes', { p_codigo: codigo });
   if (error) return;
   const lista = data || [];
-  const firma = (codigo ? 'A' : 'P') + JSON.stringify(lista.map((m) => [m.id, m.autor, m.texto, m.foto_url]));
+  const firma = (esAmigo() ? 'A' : 'P') + JSON.stringify(lista.map((m) => [m.id, m.autor, m.texto, m.foto_url]));
   if (firma === firmaAnterior) return; // nada cambió, no redibujamos
   firmaAnterior = firma;
   mensajes = lista;
@@ -138,7 +134,7 @@ function crearTarjeta(m, soloLectura = false) {
   autor.textContent = '— ' + m.autor;
   card.append(texto, autor);
 
-  if (codigo && !soloLectura) {
+  if (esAmigo() && !soloLectura) {
     const acc = el('div', 'acciones');
     const bEditar = el('button', 'secundario');
     bEditar.textContent = 'Editar';
@@ -280,6 +276,7 @@ $('form-codigo').addEventListener('submit', async (e) => {
     return;
   }
   codigo = c;
+  vistaVania = false;
   sessionStorage.setItem('codigo_foro', c);
   firmaAnterior = '';
   $('dlg-codigo').close();
@@ -288,6 +285,7 @@ $('form-codigo').addEventListener('submit', async (e) => {
 
 function salirModoAmigos() {
   codigo = null;
+  vistaVania = false;
   sessionStorage.removeItem('codigo_foro');
   limpiarForm();
   firmaAnterior = '';
@@ -304,7 +302,6 @@ $('dlg-foto').addEventListener('click', () => $('dlg-foto').close());
 
 // ============ MÚSICA Y BIENVENIDA ============
 const TEXTO_FINAL = 'Eso fue todo… por ahora 💜\nFeliz cumpleaños, Vania 🎂';
-let bienvenidaVista = false;
 let musicaActiva = false;
 const musica = $('musica');
 musica.volume = 0.4;
@@ -328,6 +325,22 @@ $('btn-abrir-regalo').addEventListener('click', async () => {
   try { await musica.play(); musicaActiva = true; } catch (e) {}
   actualizarBotonMusica();
 });
+
+// ============ PESTAÑAS (VISTA DE VANIA) ============
+function cambiarVista(paraVania) {
+  vistaVania = paraVania;
+  bienvenidaVista = false;          // vuelve a mostrarse la pantalla del regalo
+  if (!paraVania && musicaActiva) { // al volver al modo amigos se detiene la música
+    musica.pause();
+    musicaActiva = false;
+    actualizarBotonMusica();
+  }
+  cerrarVisor();
+  firmaAnterior = '';
+  actualizarPantallas();
+}
+$('tab-amigos').addEventListener('click', () => cambiarVista(false));
+$('tab-vania').addEventListener('click', () => cambiarVista(true));
 
 // ============ MODO UNO POR UNO ============
 let diapos = [];

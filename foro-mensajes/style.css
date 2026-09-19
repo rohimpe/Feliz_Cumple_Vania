@@ -11,9 +11,48 @@ body {
   background: linear-gradient(135deg, var(--fondo1), var(--fondo2)) fixed;
 }
 .oculto { display: none !important; }
-.pantalla { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1rem 1rem; text-align: center; }
+.pantalla {
+  position: relative; z-index: 1;
+  max-width: 1100px; margin: 0 auto; padding: 2.5rem 1rem 1rem; text-align: center;
+}
+body.con-pestanas .pantalla { padding-top: 4.5rem; }
 h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: .2em 0; }
 .sub { color: var(--suave); }
+
+/* Título con degradado */
+.titulo {
+  background: linear-gradient(90deg, #ff5c9a, #9b6dff);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* Emoji grande que palpita */
+.emoji-grande {
+  font-size: clamp(4.5rem, 16vw, 7rem); line-height: 1; margin-bottom: .2rem;
+  animation: latido 1.6s ease-in-out infinite;
+}
+@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* Decoración flotante de fondo */
+.decor { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.decor span {
+  position: absolute; bottom: -48px; font-size: 1.6rem; opacity: 0;
+  animation: subir 16s linear infinite;
+}
+.decor span:nth-child(1) { left: 8%;  animation-delay: 0s; }
+.decor span:nth-child(2) { left: 22%; animation-delay: 3s;   font-size: 1.2rem; }
+.decor span:nth-child(3) { left: 36%; animation-delay: 7s; }
+.decor span:nth-child(4) { left: 50%; animation-delay: 1.5s; font-size: 1.3rem; }
+.decor span:nth-child(5) { left: 64%; animation-delay: 9s; }
+.decor span:nth-child(6) { left: 78%; animation-delay: 5s;   font-size: 1.2rem; }
+.decor span:nth-child(7) { left: 90%; animation-delay: 11s; }
+.decor span:nth-child(8) { left: 15%; animation-delay: 13s; }
+@keyframes subir {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: .55; }
+  90%  { opacity: .55; }
+  100% { transform: translateY(-115vh) rotate(25deg); opacity: 0; }
+}
 
 /* Contador */
 .reloj { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0 1rem; }
@@ -26,6 +65,18 @@ h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: .2em 0; }
   font-variant-numeric: tabular-nums; color: var(--acento-osc);
 }
 .caja small { color: var(--suave); text-transform: uppercase; letter-spacing: .08em; font-size: .7rem; }
+
+/* Pestañas (modo amigos) */
+.pestanas {
+  position: fixed; top: .7rem; left: 50%; transform: translateX(-50%); z-index: 60;
+  display: flex; gap: .3rem; padding: .3rem; border-radius: 999px;
+  background: rgba(255, 255, 255, .92); box-shadow: 0 6px 20px rgba(80, 50, 120, .22);
+  backdrop-filter: blur(6px);
+}
+.tab { background: transparent; color: var(--suave); padding: .45rem .9rem; border-radius: 999px; font-size: .9rem; }
+.tab:hover { background: #f3eefc; }
+.tab.activa { background: var(--acento); color: #fff; }
+.tab.activa:hover { background: var(--acento-osc); }
 
 /* Aviso modo amigos */
 .banner {
@@ -60,17 +111,24 @@ button:hover { background: var(--acento-osc); }
 button:disabled { opacity: .6; cursor: wait; }
 button.secundario { background: #ece7f8; color: var(--texto); }
 button.link { background: none; color: var(--suave); font-weight: 400; text-decoration: underline; padding: .3rem; }
+#btn-amigo { opacity: .55; }
+#btn-amigo:hover { opacity: 1; background: none; }
 .estado, .error { min-height: 1.2em; margin: 0; font-size: .9rem; color: var(--suave); }
 .error { color: #c0264d; }
+
+/* Botón uno por uno */
+#btn-uno-a-uno { margin-top: .8rem; }
 
 /* Muro de mensajes */
 .muro { column-width: 280px; column-gap: 1rem; margin-top: 1.5rem; text-align: left; }
 .tarjeta {
   break-inside: avoid; background: var(--tarjeta); border-radius: 16px; overflow: hidden;
   margin: 0 0 1rem; box-shadow: 0 6px 18px rgba(80, 50, 120, .10);
-  animation: aparecer .6s ease both;
+  animation: aparecer .6s ease both; transition: box-shadow .3s;
 }
-.tarjeta img { width: 100%; display: block; cursor: zoom-in; }
+.tarjeta:hover { box-shadow: 0 12px 28px rgba(80, 50, 120, .20); }
+.tarjeta img { width: 100%; display: block; cursor: zoom-in; transition: transform .4s ease; }
+.tarjeta:hover img { transform: scale(1.03); }
 .tarjeta .texto {
   margin: 0; padding: 1rem 1rem .3rem; white-space: pre-wrap;
   overflow-wrap: anywhere; line-height: 1.5;
@@ -81,16 +139,13 @@ button.link { background: none; color: var(--suave); font-weight: 400; text-deco
 @keyframes aparecer { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* Pie y ventanas */
-.pie { text-align: center; padding: 2rem 1rem; }
+.pie { position: relative; z-index: 1; text-align: center; padding: 2rem 1rem; }
 dialog { border: 0; border-radius: 16px; padding: 1.2rem; box-shadow: 0 20px 60px rgba(40, 20, 80, .35); max-width: 92vw; }
 dialog::backdrop { background: rgba(30, 15, 60, .55); }
 #form-codigo { display: flex; flex-direction: column; gap: .7rem; min-width: min(320px, 80vw); }
 #form-codigo h3 { margin: 0; }
 #dlg-foto { padding: 0; background: transparent; box-shadow: none; }
 #dlg-foto img { max-width: 92vw; max-height: 88vh; border-radius: 12px; display: block; cursor: zoom-out; }
-
-/* Botón uno por uno */
-#btn-uno-a-uno { margin-top: .8rem; }
 
 /* Botón flotante de música */
 .flotante {
@@ -108,7 +163,6 @@ dialog::backdrop { background: rgba(30, 15, 60, .55); }
 }
 .bienvenida-caja { max-width: 420px; }
 .regalo { font-size: 5rem; animation: latido 1.6s ease-in-out infinite; }
-@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
 /* Visor uno por uno */
 #visor {
@@ -120,6 +174,7 @@ dialog::backdrop { background: rgba(30, 15, 60, .55); }
   position: absolute; top: 1rem; right: 1rem; width: 44px; height: 44px;
   border-radius: 50%; padding: 0; background: #ece7f8; color: var(--texto);
 }
+body.con-pestanas .visor-x { top: 4.2rem; }
 .visor-contenido { width: min(560px, 100%); }
 .visor-contenido .tarjeta {
   margin: 0; max-height: 70vh; overflow-y: auto;
@@ -130,3 +185,9 @@ dialog::backdrop { background: rgba(30, 15, 60, .55); }
 .tarjeta.final .texto { text-align: center; font-size: 1.3rem; padding: 2rem 1rem; }
 .visor-nav { display: flex; align-items: center; gap: 1rem; }
 .visor-nav span { color: var(--suave); min-width: 4.5rem; text-align: center; }
+
+/* Para quien prefiere menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .decor { display: none; }
+  .emoji-grande, .regalo { animation: none; }
+}

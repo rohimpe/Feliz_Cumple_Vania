@@ -9,9 +9,22 @@
 </head>
 <body>
 
+  <!-- Decoración de fondo -->
+  <div class="decor" aria-hidden="true">
+    <span>💜</span><span>✨</span><span>🎈</span><span>💗</span>
+    <span>✨</span><span>🎈</span><span>💜</span><span>✨</span>
+  </div>
+
+  <!-- Pestañas: solo aparecen cuando entras con el código -->
+  <nav id="pestanas" class="pestanas oculto">
+    <button id="tab-amigos" class="tab activa" type="button">✏️ Modo amigos</button>
+    <button id="tab-vania" class="tab" type="button">👁 Vista de Vania</button>
+  </nav>
+
   <!-- PANTALLA 1: cuenta regresiva -->
   <section id="pantalla-cuenta" class="pantalla">
-    <h1>Falta poco para algo especial ✨</h1>
+    <div class="emoji-grande">🎁</div>
+    <h1 class="titulo">Falta poco para algo especial</h1>
     <p class="sub">Se abre el 20 de septiembre a las 12:00 AM (hora de Ithaca)</p>
     <div class="reloj">
       <div class="caja"><span id="r-dias">--</span><small>días</small></div>
@@ -19,13 +32,14 @@
       <div class="caja"><span id="r-min">--</span><small>min</small></div>
       <div class="caja"><span id="r-seg">--</span><small>seg</small></div>
     </div>
-    <p id="contador-mensajes" class="sub"></p>
+    <p id="estado-conexion" class="sub"></p>
   </section>
 
   <!-- PANTALLA 2: el foro -->
   <section id="pantalla-foro" class="pantalla oculto">
     <header>
-      <h1>Feliz cumpleaños, Vania 🎂</h1>
+      <div class="emoji-grande">🎂</div>
+      <h1 class="titulo">Feliz cumpleaños, Vania</h1>
       <p class="sub">Un mensaje de cada persona que te quiere</p>
       <button id="btn-uno-a-uno">▶ Verlos uno por uno</button>
     </header>
@@ -55,7 +69,7 @@
   </section>
 
   <footer class="pie">
-    <button id="btn-amigo" class="link">Soy amigo/a</button>
+    <button id="btn-amigo" class="link">Secreto.....</button>
     <button id="btn-salir" class="link oculto">Salir del modo amigos</button>
   </footer>
 
@@ -83,7 +97,7 @@
   <div id="bienvenida" class="oculto">
     <div class="bienvenida-caja">
       <div class="regalo">🎁</div>
-      <h1>Feliz cumpleaños, Vania</h1>
+      <h1 class="titulo">Feliz cumpleaños, Vania</h1>
       <p class="sub">Alguien preparó algo para ti…</p>
       <button id="btn-abrir-regalo">Abrir mi regalo</button>
     </div>
