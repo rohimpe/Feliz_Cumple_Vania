@@ -7,11 +7,27 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, '0');
 
+// Sello anónimo de este navegador: sirve para saber qué mensajes son "tuyos"
+function obtenerToken() {
+  try {
+    let t = localStorage.getItem('token_foro');
+    if (!t) {
+      t = crypto.randomUUID();
+      localStorage.setItem('token_foro', t);
+    }
+    return t;
+  } catch (e) {
+    return crypto.randomUUID(); // si el navegador bloquea el almacenamiento, vale solo para esta visita
+  }
+}
+const token = obtenerToken();
+
 let codigo = sessionStorage.getItem('codigo_foro'); // se borra al cerrar la pestaña
+let rol = null;               // 'admin', 'amigo' o null (lo confirma el servidor)
 let apertura = 0;             // momento de apertura (ms)
 let offset = 0;               // diferencia entre el reloj del servidor y el de este dispositivo
 let foroAbierto = false;
-let vistaVania = false;       // true = el amigo está previsualizando lo que verá Vania
+let vistaVania = false;       // true = el admin está previsualizando lo que verá Vania
 let bienvenidaVista = false;
 let mensajes = [];
 let firmaAnterior = '';
@@ -20,7 +36,8 @@ let fotoActual = null;
 
 const ahoraServidor = () => Date.now() + offset;
 const verForo = () => foroAbierto || Boolean(codigo);
-const esAmigo = () => Boolean(codigo) && !vistaVania;
+const esAmigo = () => Boolean(codigo) && !vistaVania;  // modo edición activo (amigo o admin)
+const esAdmin = () => rol === 'admin';
 
 // ============ ARRANQUE ============
 async function iniciar() {
@@ -32,7 +49,10 @@ async function iniciar() {
   offset = new Date(info.ahora).getTime() - Date.now();
   apertura = new Date(info.apertura).getTime();
 
-  if (codigo && !(await verificar(codigo))) salirModoAmigos();
+  if (codigo) {
+    rol = await obtenerRol(codigo);
+    if (!rol) salirModoAmigos();
+  }
 
   foroAbierto = apertura - ahoraServidor() <= 0;
   actualizarPantallas();
@@ -72,14 +92,14 @@ function tick() {
 function actualizarPantallas() {
   const ver = verForo();
   const amigo = esAmigo();
-  document.body.classList.toggle('con-pestanas', Boolean(codigo));
+  document.body.classList.toggle('con-pestanas', esAdmin());
   $('pantalla-cuenta').classList.toggle('oculto', ver);
   $('pantalla-foro').classList.toggle('oculto', !ver);
   $('form-mensaje').classList.toggle('oculto', !amigo);
   $('banner-amigos').classList.toggle('oculto', !amigo || foroAbierto);
   $('btn-amigo').classList.toggle('oculto', Boolean(codigo));
   $('btn-salir').classList.toggle('oculto', !codigo);
-  $('pestanas').classList.toggle('oculto', !codigo);
+  $('pestanas').classList.toggle('oculto', !esAdmin());   // solo el admin ve las pestañas
   $('tab-amigos').classList.toggle('activa', !vistaVania);
   $('tab-vania').classList.toggle('activa', vistaVania);
   $('bienvenida').classList.toggle('oculto', !((foroAbierto || vistaVania) && !amigo && !bienvenidaVista));
@@ -97,10 +117,11 @@ async function refrescar() {
 
 // ============ MENSAJES ============
 async function cargar() {
-  const { data, error } = await db.rpc('leer_mensajes', { p_codigo: codigo });
+  const { data, error } = await db.rpc('leer_mensajes', { p_codigo: codigo, p_token: token });
   if (error) return;
   const lista = data || [];
-  const firma = (esAmigo() ? 'A' : 'P') + JSON.stringify(lista.map((m) => [m.id, m.autor, m.texto, m.foto_url]));
+  const firma = (esAmigo() ? 'A' + rol : 'P') +
+    JSON.stringify(lista.map((m) => [m.id, m.autor, m.texto, m.foto_url, m.mio]));
   if (firma === firmaAnterior) return; // nada cambió, no redibujamos
   firmaAnterior = firma;
   mensajes = lista;
@@ -134,7 +155,8 @@ function crearTarjeta(m, soloLectura = false) {
   autor.textContent = '— ' + m.autor;
   card.append(texto, autor);
 
-  if (esAmigo() && !soloLectura) {
+  // El admin ve Editar/Borrar en todos; el amigo, solo en los suyos
+  if (esAmigo() && !soloLectura && (esAdmin() || m.mio)) {
     const acc = el('div', 'acciones');
     const bEditar = el('button', 'secundario');
     bEditar.textContent = 'Editar';
@@ -203,6 +225,7 @@ $('form-mensaje').addEventListener('submit', async (e) => {
 
     const base = {
       p_codigo: codigo,
+      p_token: token,
       p_autor: $('campo-autor').value,
       p_texto: $('campo-texto').value,
       p_foto_url: fotoUrl,
@@ -221,6 +244,8 @@ $('form-mensaje').addEventListener('submit', async (e) => {
     if (msg.includes('codigo_invalido')) {
       salirModoAmigos();
       alert('El código ya no es válido.');
+    } else if (msg.includes('sin_permiso')) {
+      $('estado-form').textContent = 'Solo puedes editar tus propios mensajes.';
     } else {
       $('estado-form').textContent = 'Error: ' + msg;
     }
@@ -249,15 +274,20 @@ $('btn-cancelar').addEventListener('click', () => {
 
 async function borrar(m) {
   if (!confirm(`¿Borrar el mensaje de ${m.autor}?`)) return;
-  const { error } = await db.rpc('borrar_mensaje', { p_codigo: codigo, p_id: m.id });
-  if (error) { alert('No se pudo borrar.'); return; }
+  const { error } = await db.rpc('borrar_mensaje', { p_codigo: codigo, p_token: token, p_id: m.id });
+  if (error) {
+    alert(String(error.message).includes('sin_permiso')
+      ? 'Solo puedes borrar tus propios mensajes.'
+      : 'No se pudo borrar.');
+    return;
+  }
   await cargar();
 }
 
 // ============ MODO AMIGOS (CÓDIGO) ============
-async function verificar(cod) {
-  const { data, error } = await db.rpc('verificar_codigo', { p_codigo: cod });
-  return !error && data === true;
+async function obtenerRol(cod) {
+  const { data, error } = await db.rpc('obtener_rol', { p_codigo: cod });
+  return error ? null : data; // 'admin', 'amigo' o null
 }
 
 $('btn-amigo').addEventListener('click', () => {
@@ -271,11 +301,13 @@ $('form-codigo').addEventListener('submit', async (e) => {
   e.preventDefault();
   const c = $('input-codigo').value.trim();
   if (!c) return;
-  if (!(await verificar(c))) {
+  const r = await obtenerRol(c);
+  if (!r) {
     $('error-codigo').textContent = 'Código incorrecto';
     return;
   }
   codigo = c;
+  rol = r;
   vistaVania = false;
   sessionStorage.setItem('codigo_foro', c);
   firmaAnterior = '';
@@ -285,6 +317,7 @@ $('form-codigo').addEventListener('submit', async (e) => {
 
 function salirModoAmigos() {
   codigo = null;
+  rol = null;
   vistaVania = false;
   sessionStorage.removeItem('codigo_foro');
   limpiarForm();
@@ -326,8 +359,9 @@ $('btn-abrir-regalo').addEventListener('click', async () => {
   actualizarBotonMusica();
 });
 
-// ============ PESTAÑAS (VISTA DE VANIA) ============
+// ============ PESTAÑAS (VISTA DE VANIA, SOLO ADMIN) ============
 function cambiarVista(paraVania) {
+  if (paraVania && !esAdmin()) return;
   vistaVania = paraVania;
   bienvenidaVista = false;          // vuelve a mostrarse la pantalla del regalo
   if (!paraVania && musicaActiva) { // al volver al modo amigos se detiene la música
